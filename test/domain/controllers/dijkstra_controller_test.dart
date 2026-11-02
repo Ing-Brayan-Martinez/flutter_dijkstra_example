@@ -45,6 +45,59 @@ void main() {
       expect(controller.isRunningSignal.value, isFalse);
     });
 
+    test('finds a shortest path around a wall without crossing it', () async {
+      final controller = DijkstraController(
+        rows: 3,
+        cols: 3,
+        startRow: 1,
+        startCol: 0,
+        endRow: 1,
+        endCol: 2,
+      );
+      controller.setSpeed(0);
+      controller.toggleWall(1, 1);
+
+      await controller.runDijkstra();
+
+      final grid = controller.gridSignal.value;
+      final pathNodes = grid.expand((row) => row).where((node) => node.isPath);
+
+      expect(controller.statsSignal.value.state, AlgorithmState.completed);
+      expect(controller.statsSignal.value.pathLength, 5);
+      expect(pathNodes.length, 5);
+      expect(grid[1][1].isWall, isTrue);
+      expect(grid[1][1].isPath, isFalse);
+    });
+
+    test('keeps endpoints clear and rejects positions outside the grid', () {
+      final controller = DijkstraController(
+        rows: 3,
+        cols: 3,
+        startRow: 0,
+        startCol: 0,
+        endRow: 2,
+        endCol: 2,
+      );
+
+      controller.toggleWall(0, 0);
+      controller.toggleWall(2, 2);
+
+      expect(controller.gridSignal.value[0][0].isWall, isFalse);
+      expect(controller.gridSignal.value[2][2].isWall, isFalse);
+      expect(() => controller.toggleWall(-1, 0), throwsRangeError);
+      expect(() => controller.setEndNode(3, 0), throwsRangeError);
+    });
+
+    test('clamps the animation speed to its supported range', () {
+      final controller = DijkstraController(rows: 3, cols: 3);
+
+      controller.setSpeed(-1);
+      expect(controller.stepDelayMsSignal.value, 0);
+
+      controller.setSpeed(101);
+      expect(controller.stepDelayMsSignal.value, 100);
+    });
+
     test('moves endpoints, removes a wall, and resets search state', () async {
       final controller = DijkstraController(
         rows: 3,
